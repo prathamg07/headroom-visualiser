@@ -1,0 +1,40 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: var(--ground);
+    color: var(--ink-900);
+    font-family: var(--font-ui);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Microcopy, labels, buttons, section titles, nav items are lowercase (Design System 3.2) */
+  button, nav a, label, .lowercase-ui {
+    text-transform: lowercase;
+  }
+
+  /* Numbers always use tabular nums (Design System 3.4) */
+  .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Mechanical sliding-bar loader (Design System 8.14) */
+@keyframes mechanical-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-sliding-bar {
+  animation: mechanical-slide 1.2s linear infinite;
+}

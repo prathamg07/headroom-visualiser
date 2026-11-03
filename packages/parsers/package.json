@@ -1,0 +1,19 @@
+{
+  "name": "@headroom/parsers",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "luxon": "^3.5.0",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.4"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

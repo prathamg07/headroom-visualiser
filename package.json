@@ -1,0 +1,21 @@
+{
+  "name": "headroom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm --workspace=@headroom/api run dev",
+    "dev:web": "npm --workspace=@headroom/web run dev",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm --workspace=@headroom/api run db:generate",
+    "db:migrate": "npm --workspace=@headroom/api run db:migrate",
+    "db:push": "npm --workspace=@headroom/api run db:push",
+    "db:seed": "npm --workspace=@headroom/api run db:seed"
+  }
+}

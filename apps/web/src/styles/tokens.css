@@ -1,0 +1,64 @@
+:root {
+  /* color strict */
+  --red-primary: #E53935;
+  --blue-primary: #1E88E5;
+  --yellow-primary: #FDD835;
+
+  /* color tempered */
+  --red-fill: #D64545;
+  --blue-fill: #2D6CDF;
+  --yellow-fill: #E8C547;
+
+  /* neutral */
+  --black: #0A0A0A;
+  --white: #FFFFFF;
+  --ground: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-inverse: #0A0A0A;
+  --ink-900: #111111;
+  --ink-700: #333333;
+  --ink-500: #666666;
+  --ink-300: #B3B3B3;
+
+  /* spacing */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+  --space-8: 96px;
+  --space-9: 128px;
+
+  /* radius */
+  --radius-0: 0px;
+  --radius-1: 2px;
+  --radius-full: 9999px;
+
+  /* border */
+  --border-strong: 2px solid var(--black);
+  --border-soft: 1px solid var(--ink-300);
+
+  /* focus */
+  --focus-ring: 3px solid var(--blue-primary);
+  --focus-offset: 2px;
+
+  /* motion */
+  --motion-fast: 120ms linear;
+  --motion-base: 200ms linear;
+  --motion-slow: 320ms linear;
+
+  /* font */
+  --font-ui: "Jost", "Futura", "Century Gothic", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms linear;
+    --motion-base: 0ms linear;
+    --motion-slow: 0ms linear;
+  }
+}
