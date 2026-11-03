@@ -82,7 +82,8 @@ export function calculateBurnRate({
 }
 
 /**
- * Calculate daily end-of-day balances and heatmap cells for the next N days
+ * Calculate daily end-of-day balances and heatmap cells for the next N days.
+ * Applies discretionary burn rate erosion for future days (PRD Section 8.1 & 8.7).
  */
 export function calculateDailyBalances({
   accounts = [],
@@ -173,7 +174,13 @@ export function calculateDailyBalances({
       projectedNet += row.direction === 'credit' ? amt : -amt;
     }
 
+    // Apply posted and scheduled events
     runningBalance += postedNet + projectedNet;
+
+    // For future days (d >= 1), apply discretionary burn rate erosion (PRD 8.1 & 8.7)
+    if (d >= 1) {
+      runningBalance -= burnRate;
+    }
 
     const status = classifyDay(runningBalance, buffer, safeMargin);
 
@@ -183,12 +190,13 @@ export function calculateDailyBalances({
       balance: runningBalance,
       postedNet,
       projectedNet,
+      burnRateErosion: d >= 1 ? burnRate : 0,
       events: [
         ...postedToday.map((t) => ({ ...t, isProjected: false })),
         ...projectedToday.map((r) => ({ ...r, isProjected: true })),
       ],
       status, // 'safe' | 'tight' | 'danger'
-      isCollision: false, // will be tagged by detectCollisions
+      isCollision: false,
     });
   }
 

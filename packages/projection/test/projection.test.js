@@ -3,6 +3,7 @@ import {
   calculateMedian,
   classifyDay,
   simulateHeadroom,
+  calculateDailyBalances,
   detectCollisions,
 } from '../src/index.js';
 
@@ -85,16 +86,40 @@ describe('packages/projection unit tests', () => {
     expect(result.headroomDays).toBe(21);
     expect(result.headroomDate).toBe('2026-11-25');
 
-    // Classify dailyPath to detect collisions
-    const classifiedDays = result.dailyPath.map((p) => ({
-      date: p.date,
-      balance: p.balance,
-      status: classifyDay(p.balance, buffer, burnRate),
-    }));
+    // Test calculateDailyBalances produces the exact same daily balances as simulateHeadroom
+    const accounts = [
+      { id: 1, currency: 'INR', kind: 'checking', opening_balance: '18400' },
+      { id: 2, currency: 'INR', kind: 'cash', opening_balance: '600' },
+    ];
+    const projectedRows = [
+      { id: 1, account_id: 1, due_at: '2026-11-05', amount: '8000', direction: 'debit' },
+      { id: 2, account_id: 1, due_at: '2026-11-07', amount: '399', direction: 'debit' },
+      { id: 3, account_id: 1, due_at: '2026-11-25', amount: '4200', direction: 'debit' },
+      { id: 4, account_id: 1, due_at: '2026-12-01', amount: '10000', direction: 'credit' },
+      { id: 5, account_id: 1, due_at: '2026-12-01', amount: '8000', direction: 'debit' },
+    ];
 
-    const collisions = detectCollisions(classifiedDays);
+    const dailyBalances = calculateDailyBalances({
+      accounts,
+      transactions: [],
+      projectedRows,
+      todayStr,
+      horizonDays,
+      currency: 'INR',
+      buffer,
+      burnRate,
+    });
+
+    const heatmap5Nov = dailyBalances.find((d) => d.date === '2026-11-05');
+    expect(heatmap5Nov.balance).toBe(10660);
+
+    const heatmap25Nov = dailyBalances.find((d) => d.date === '2026-11-25');
+    expect(heatmap25Nov.balance).toBe(-739);
+    expect(heatmap25Nov.status).toBe('danger');
+
+    const collisions = detectCollisions(dailyBalances);
     expect(collisions.length).toBe(1);
     expect(collisions[0].startDate).toBe('2026-11-25');
-    expect(collisions[0].lengthDays).toBe(10); // 25 Nov through 4 Dec
+    expect(collisions[0].lengthDays).toBe(10);
   });
 });

@@ -214,6 +214,9 @@ export const createSettlementSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3).toUpperCase(),
   linked_tx: z.number().int().positive().nullable().optional(),
+  record_in_ledger: z.boolean().default(false),
+  account_id: z.number().int().positive().nullable().optional(),
+  posted_at: z.string().datetime({ offset: true }).or(z.date()).optional(),
 });
 
 // ==========================================

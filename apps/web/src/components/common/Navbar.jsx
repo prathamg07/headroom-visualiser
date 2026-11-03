@@ -65,6 +65,22 @@ export function Navbar() {
           </NavLink>
         )}
       </div>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t-2 border-black bg-black md:hidden">
+        {navLinks.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            className={({ isActive }) =>
+              `min-h-16 px-1 py-2 flex items-center justify-center text-[10px] font-mono lowercase border-r border-ink-700 ${
+                isActive ? 'bg-blue-primary text-white' : 'text-white'
+              }`
+            }
+          >
+            {link.label === 'smart import' ? 'import' : link.label}
+          </NavLink>
+        ))}
+      </nav>
     </header>
   );
 }

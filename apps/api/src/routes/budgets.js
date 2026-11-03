@@ -131,8 +131,29 @@ router.get('/status', async (req, res) => {
 
         const spent = txs.reduce((sum, t) => sum + Number(t.amount), 0);
         const budgetAmount = Number(b.amount);
-        const remaining = budgetAmount - spent;
-        const pctUsed = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
+        const previousStart = now.minus({ months: 1 }).startOf('month').toJSDate();
+        const previousEnd = now.minus({ months: 1 }).endOf('month').toJSDate();
+        let rolloverAmount = 0;
+        if (b.rollover) {
+          const previousTxs = await db
+            .select({ amount: transactions.amount })
+            .from(transactions)
+            .where(
+              and(
+                eq(transactions.user_id, req.user.id),
+                eq(transactions.category_id, b.category_id),
+                eq(transactions.direction, 'debit'),
+                isNull(transactions.voided_at),
+                gte(transactions.posted_at, previousStart),
+                lte(transactions.posted_at, previousEnd)
+              )
+            );
+          const previousSpent = previousTxs.reduce((sum, t) => sum + Number(t.amount), 0);
+          rolloverAmount = Math.max(budgetAmount - previousSpent, 0);
+        }
+        const effectiveBudget = budgetAmount + rolloverAmount;
+        const remaining = effectiveBudget - spent;
+        const pctUsed = effectiveBudget > 0 ? (spent / effectiveBudget) * 100 : 0;
         const expectedPacePct = (currentDay / daysInMonth) * 100;
         const paceRatio = expectedPacePct > 0 ? pctUsed / expectedPacePct : 1;
 
@@ -141,7 +162,9 @@ router.get('/status', async (req, res) => {
           category_name: b.category_name,
           category_color: b.category_color,
           currency: b.currency,
-          budget_amount: budgetAmount,
+          budget_amount: effectiveBudget,
+          base_budget_amount: budgetAmount,
+          rollover_amount: rolloverAmount,
           spent,
           remaining,
           pct_used: Math.round(pctUsed),

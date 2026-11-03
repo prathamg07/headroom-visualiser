@@ -4,6 +4,7 @@ import { transactions, transactionChanges, accounts, categories } from '../db/sc
 import { eq, and, isNull, gte, lte, ilike, desc, or } from 'drizzle-orm';
 import { authenticate } from '../middleware/auth.js';
 import { createTransactionSchema, updateTransactionSchema } from '@headroom/shared';
+import { autoRealizeProjectedRow } from '../services/realization.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -119,6 +120,16 @@ router.post('/', async (req, res) => {
       source: data.source || 'manual',
     });
 
+    // Check and retire any matching recurring projected row to prevent double counting
+    await autoRealizeProjectedRow({
+      userId: req.user.id,
+      accountId: newTx.account_id,
+      amount: newTx.amount,
+      direction: newTx.direction,
+      postedAt: newTx.posted_at,
+      transactionId: newTx.id,
+    });
+
     return res.status(201).json(newTx);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -215,6 +226,53 @@ router.get('/:id/history', async (req, res) => {
       .orderBy(desc(transactionChanges.created_at));
 
     return res.json(history);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:id/revert', async (req, res) => {
+  try {
+    const txId = parseInt(req.params.id, 10);
+    const [change] = await db
+      .select()
+      .from(transactionChanges)
+      .where(and(eq(transactionChanges.transaction_id, txId), eq(transactionChanges.user_id, req.user.id)))
+      .orderBy(desc(transactionChanges.created_at))
+      .limit(1);
+
+    if (!change || !change.old_values) {
+      return res.status(404).json({ error: 'No reversible change found for transaction' });
+    }
+
+    const oldVals = change.old_values;
+
+    const [restored] = await db
+      .update(transactions)
+      .set({
+        account_id: oldVals.account_id,
+        posted_at: oldVals.posted_at ? new Date(oldVals.posted_at) : undefined,
+        amount: oldVals.amount,
+        currency: oldVals.currency,
+        merchant: oldVals.merchant,
+        description: oldVals.description,
+        category_id: oldVals.category_id,
+        direction: oldVals.direction,
+        voided_at: oldVals.voided_at,
+      })
+      .where(eq(transactions.id, txId))
+      .returning();
+
+    await db.insert(transactionChanges).values({
+      transaction_id: txId,
+      user_id: req.user.id,
+      change_type: 'reverted',
+      old_values: change.new_values,
+      new_values: restored,
+      source: 'revert',
+    });
+
+    return res.json({ message: 'Transaction reverted to previous state', transaction: restored });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

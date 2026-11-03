@@ -3,7 +3,7 @@ import { INDIAN_BANK_TEMPLATES } from './sms/indianBanks.js';
 import { US_BANK_TEMPLATES } from './sms/usBanks.js';
 import { trigramSimilarity } from './matching/trigram.js';
 import { matchCandidateAgainstTransactions } from './matching/duplicateDetector.js';
-import { parseBankCsv } from './csv/csvParser.js';
+import { parseBankCsv, detectCsvColumns } from './csv/csvParser.js';
 
 export {
   redactPII,
@@ -12,6 +12,7 @@ export {
   trigramSimilarity,
   matchCandidateAgainstTransactions,
   parseBankCsv,
+  detectCsvColumns,
 };
 
 const ALL_TEMPLATES = [...INDIAN_BANK_TEMPLATES, ...US_BANK_TEMPLATES];

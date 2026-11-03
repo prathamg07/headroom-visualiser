@@ -16,6 +16,7 @@ import projectionRoutes from './routes/projection.js';
 import importsRoutes from './routes/imports.js';
 import groupsRoutes from './routes/groups.js';
 import budgetsRoutes from './routes/budgets.js';
+import incomeRoutes from './routes/income.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -48,6 +49,7 @@ app.use('/api/projection', projectionRoutes);
 app.use('/api/imports', importsRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/budgets', budgetsRoutes);
+app.use('/api/income', incomeRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

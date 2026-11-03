@@ -12,6 +12,7 @@ import { NavLink } from 'react-router-dom';
 
 export function DashboardPage() {
   const [selectedCurrency, setSelectedCurrency] = useState('INR');
+  const [showCollisionDetails, setShowCollisionDetails] = useState(false);
 
   // Load projection summary
   const { data: projection, isLoading: projLoading } = useQuery({
@@ -79,7 +80,10 @@ export function DashboardPage() {
       </div>
 
       {/* Collision Warning Banner */}
-      <CollisionBanner collisions={projection?.collisions} />
+      <CollisionBanner
+        collisions={projection?.collisions}
+        onSeeDetails={() => setShowCollisionDetails(true)}
+      />
 
       {/* Row 1: Headroom Hero Tile (spans 8 cols) + Account Cards (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -101,6 +105,32 @@ export function DashboardPage() {
             />
           </Card>
         </div>
+
+        {showCollisionDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto border-2 border-black bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between border-b-2 border-black pb-3">
+                <h2 className="text-xl font-bold lowercase">collision details</h2>
+                <Button variant="secondary" size="small" onClick={() => setShowCollisionDetails(false)}>close</Button>
+              </div>
+              {(projection?.collisions || []).map((collision) => (
+                <div key={`${collision.startDate}-${collision.endDate}`} className="mb-4">
+                  <p className="mb-2 text-xs font-mono lowercase">
+                    {collision.startDate} to {collision.endDate} · {collision.lengthDays} tight days
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {collision.days.map((day) => (
+                      <div key={day.date} className="flex justify-between border-b border-ink-300 py-2 text-xs">
+                        <span>{day.date}</span>
+                        <span className="font-mono">₹{Math.round(day.balance).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Right Sidebar: Accounts & Actions */}
         <div className="lg:col-span-4 flex flex-col gap-6">

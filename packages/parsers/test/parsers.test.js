@@ -4,6 +4,7 @@ import {
   parseSmsWithTemplates,
   trigramSimilarity,
   matchCandidateAgainstTransactions,
+  parseBankCsv,
 } from '../src/index.js';
 
 describe('packages/parsers unit tests', () => {
@@ -81,5 +82,14 @@ describe('packages/parsers unit tests', () => {
     );
     expect(correction.action).toBe('update');
     expect(correction.diff.newAmount).toBe(600);
+  });
+
+  it('parses common bank CSV debit and credit columns', () => {
+    const rows = parseBankCsv(
+      'Txn Date,Withdrawals,Deposits,Narration\n04/11/2026,100,,Coffee\n04/11/2026,,250,Salary'
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ amount: 100, direction: 'debit', merchant: 'Coffee' });
+    expect(rows[1]).toMatchObject({ amount: 250, direction: 'credit', merchant: 'Salary' });
   });
 });

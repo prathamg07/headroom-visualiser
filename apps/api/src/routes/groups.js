@@ -1,7 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { db } from '../db/index.js';
-import { groups, groupMembers, splits, splitShares, settlements, users } from '../db/schema.js';
+import { groups, groupMembers, splits, splitShares, settlements, users, accounts, transactions } from '../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
 import { authenticate } from '../middleware/auth.js';
 import { createGroupSchema, joinGroupSchema, createSplitSchema, createSettlementSchema } from '@headroom/shared';
@@ -285,12 +285,49 @@ router.post('/:id/settlements', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0].message });
     }
 
+    const membership = await db
+      .select({ user_id: groupMembers.user_id })
+      .from(groupMembers)
+      .where(and(eq(groupMembers.group_id, groupId), eq(groupMembers.user_id, req.user.id)));
+    if (!membership.length) return res.status(403).json({ error: 'You are not a member of this group' });
+    if (parseResult.data.record_in_ledger && !parseResult.data.account_id) {
+      return res.status(400).json({ error: 'Choose an account to record this settlement' });
+    }
+
+    let linkedTx = parseResult.data.linked_tx || null;
+    if (parseResult.data.record_in_ledger) {
+      const [account] = await db
+        .select({ id: accounts.id, currency: accounts.currency })
+        .from(accounts)
+        .where(and(eq(accounts.id, parseResult.data.account_id), eq(accounts.user_id, req.user.id), isNull(accounts.archived_at)));
+      if (!account || account.currency !== parseResult.data.currency) {
+        return res.status(400).json({ error: 'Selected account is not available for this currency' });
+      }
+      if (parseResult.data.from_user === req.user.id || parseResult.data.to_user === req.user.id) {
+        const [tx] = await db.insert(transactions).values({
+          user_id: req.user.id,
+          account_id: account.id,
+          posted_at: parseResult.data.posted_at ? new Date(parseResult.data.posted_at) : new Date(),
+          amount: String(parseResult.data.amount),
+          currency: parseResult.data.currency,
+          direction: parseResult.data.from_user === req.user.id ? 'debit' : 'credit',
+          merchant: 'group settlement',
+          description: `settlement with group member`,
+          source: 'transfer',
+        }).returning();
+        linkedTx = tx.id;
+      }
+    }
+
     const [settlement] = await db
       .insert(settlements)
       .values({
-        ...parseResult.data,
         group_id: groupId,
+        from_user: parseResult.data.from_user,
+        to_user: parseResult.data.to_user,
         amount: String(parseResult.data.amount),
+        currency: parseResult.data.currency,
+        linked_tx: linkedTx,
       })
       .returning();
 

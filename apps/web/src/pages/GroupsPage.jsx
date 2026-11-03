@@ -13,6 +13,8 @@ export function GroupsPage() {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showAddSplit, setShowAddSplit] = useState(false);
+  const [recordInLedger, setRecordInLedger] = useState(true);
+  const [ledgerAccountId, setLedgerAccountId] = useState('');
 
   const [newGroupName, setNewGroupName] = useState('');
   const [joinCodeInput, setJoinCodeInput] = useState('');
@@ -28,6 +30,10 @@ export function GroupsPage() {
   const { data: groups = [] } = useQuery({
     queryKey: ['groups'],
     queryFn: () => apiRequest('/groups'),
+  });
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: () => apiRequest('/accounts'),
   });
 
   const activeGroupId = selectedGroupId || (groups[0] ? groups[0].group_id : null);
@@ -106,6 +112,8 @@ export function GroupsPage() {
           to_user: parseInt(transfer.to_user, 10),
           amount: transfer.amount,
           currency: groupDetail?.base_currency || 'INR',
+          record_in_ledger: recordInLedger,
+          account_id: ledgerAccountId ? Number(ledgerAccountId) : null,
         }),
       }),
     onSuccess: () => {
@@ -234,6 +242,24 @@ export function GroupsPage() {
 
               {/* Settle-up Card (Design System 9.9) */}
               <Card title="settle-up (minimum transfers)">
+                <div className="mb-3 flex flex-wrap items-center gap-3 border-b-2 border-black pb-3 text-xs">
+                  <label className="flex items-center gap-2 lowercase">
+                    <input type="checkbox" checked={recordInLedger} onChange={(e) => setRecordInLedger(e.target.checked)} />
+                    record my side in cash ledger
+                  </label>
+                  {recordInLedger && (
+                    <select
+                      className="h-8 border-2 border-black bg-white px-2"
+                      value={ledgerAccountId || accounts[0]?.id || ''}
+                      onChange={(e) => setLedgerAccountId(e.target.value)}
+                    >
+                      <option value="">select account</option>
+                      {accounts.filter((a) => a.currency === (groupDetail?.base_currency || 'INR')).map((account) => (
+                        <option key={account.id} value={account.id}>{account.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 {settleUp?.transfers?.length === 0 ? (
                   <p className="text-xs text-ink-500 lowercase">
                     all balances are settled up. nobody owes money!

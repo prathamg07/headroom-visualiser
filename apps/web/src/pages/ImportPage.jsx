@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../api/client.js';
 import { Card } from '../components/common/Card.jsx';
 import { Button } from '../components/common/Button.jsx';
@@ -9,6 +9,14 @@ import { useNavigate } from 'react-router-dom';
 export function ImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: () => apiRequest('/accounts'),
+  });
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => apiRequest('/categories'),
+  });
   const [pasteText, setPasteText] = useState(
     'Alert: Rs. 1,499.00 debited from HDFC Bank A/C ending 4321 to Netflix. Ref: HDFC998877. Avl bal: Rs. 24,000\n\n' +
     'Paid Rs. 350 to Starbucks Coffee successfully via PhonePe. Txn ID: P24110499\n\n' +
@@ -245,6 +253,39 @@ export function ImportPage() {
                         <span className="font-mono text-xs text-ink-700 block truncate mt-1">
                           {item.bank_reference || 'none'}
                         </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-ink-500 lowercase block">account</span>
+                        <select
+                          required
+                          className="w-full h-8 px-2 border border-black bg-ground text-xs"
+                          value={item.account_id || ''}
+                          onChange={(e) => {
+                            const account = accounts.find((a) => String(a.id) === e.target.value);
+                            handleFieldChange(idx, 'account_id', account ? account.id : null);
+                            handleFieldChange(idx, 'currency', account?.currency || item.currency);
+                          }}
+                        >
+                          <option value="">select account</option>
+                          {accounts.map((account) => (
+                            <option key={account.id} value={account.id}>{account.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-ink-500 lowercase block">category</span>
+                        <select
+                          className="w-full h-8 px-2 border border-black bg-ground text-xs"
+                          value={item.category_id || ''}
+                          onChange={(e) => handleFieldChange(idx, 'category_id', e.target.value ? Number(e.target.value) : null)}
+                        >
+                          <option value="">uncategorized</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>{category.name}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

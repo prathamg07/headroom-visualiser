@@ -8,10 +8,12 @@ import {
   extractFromPastedText,
   matchCandidateAgainstTransactions,
   parseBankCsv,
+  detectCsvColumns,
   trigramSimilarity,
   redactPII,
 } from '@headroom/parsers';
 import { extractWithGemini } from '../services/geminiExtraction.js';
+import { autoRealizeProjectedRow } from '../services/realization.js';
 
 const upload = multer({ limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit
 const router = express.Router();
@@ -144,7 +146,16 @@ router.post('/csv', upload.single('file'), async (req, res) => {
       .where(and(eq(transactions.user_id, req.user.id), isNull(transactions.voided_at)));
 
     // Parse CSV
-    const parsedRows = parseBankCsv(csvContent);
+    let columnMapping = {};
+    if (req.body?.column_mapping) {
+      try {
+        columnMapping = JSON.parse(req.body.column_mapping);
+      } catch {
+        return res.status(400).json({ error: 'Invalid CSV column mapping' });
+      }
+    }
+    const detectedColumns = detectCsvColumns(csvContent);
+    const parsedRows = parseBankCsv(csvContent, { ...detectedColumns, ...columnMapping });
 
     const processedItems = parsedRows.map((cand) => {
       const matchResult = matchCandidateAgainstTransactions(cand, existingTxs);
@@ -177,6 +188,7 @@ router.post('/csv', upload.single('file'), async (req, res) => {
     return res.json({
       import_id: savedImport.id,
       items: processedItems,
+      columns: detectedColumns,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -215,6 +227,9 @@ router.post('/:id/confirm', async (req, res) => {
     if (!importRecord) {
       return res.status(404).json({ error: 'Import not found' });
     }
+    if (importRecord.status === 'confirmed') {
+      return res.status(409).json({ error: 'Import has already been confirmed' });
+    }
 
     const appliedTransactions = [];
 
@@ -239,6 +254,25 @@ router.post('/:id/confirm', async (req, res) => {
           appliedTransactions.push(updated);
         }
       } else if (item.action === 'create') {
+        if (!item.account_id) {
+          return res.status(400).json({ error: 'Every transaction must have an account selected' });
+        }
+        const [account] = await db
+          .select({ id: accounts.id, currency: accounts.currency })
+          .from(accounts)
+          .where(and(eq(accounts.id, item.account_id), eq(accounts.user_id, req.user.id), isNull(accounts.archived_at)));
+        if (!account) {
+          return res.status(400).json({ error: 'Selected account is not available' });
+        }
+        if (item.category_id) {
+          const [category] = await db
+            .select({ id: categories.id })
+            .from(categories)
+            .where(and(eq(categories.id, item.category_id), eq(categories.user_id, req.user.id)));
+          if (!category) {
+            return res.status(400).json({ error: 'Selected category is not available' });
+          }
+        }
         // Insert new transaction
         const [created] = await db
           .insert(transactions)
@@ -260,6 +294,16 @@ router.post('/:id/confirm', async (req, res) => {
           .returning();
 
         appliedTransactions.push(created);
+
+        // Auto-realize matching projected recurring row
+        await autoRealizeProjectedRow({
+          userId: req.user.id,
+          accountId: created.account_id,
+          amount: created.amount,
+          direction: created.direction,
+          postedAt: created.posted_at,
+          transactionId: created.id,
+        });
       }
     }
 
